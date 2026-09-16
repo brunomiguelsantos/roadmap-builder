@@ -12,6 +12,7 @@ import { createFileBrowser } from './file-browser.js';
 import { createDatePickers } from './date-pickers.js';
 import { createStoryMoves } from './story-moves.js';
 import { createStoryDragHandlers } from './drag-drop.js';
+import { createStoryEpicMove } from './story-epic-move.js';
 import { createCountryFlagHandlers } from './country-flags.js';
 import { createModalFocusTrap } from './focus-trap.js';
 import { createStatusHandlers } from './status.js';
@@ -832,6 +833,20 @@ export function init(_root) {
         const __storyMoves = createStoryMoves({ updateStoryNumbers, generatePreview });
         const { moveStoryUpByEpic, moveStoryDownByEpic } = __storyMoves;
         Object.assign(window, __storyMoves);
+        Object.assign(
+            window,
+            createStoryEpicMove({
+                addStory,
+                addBTLStory,
+                removeStory,
+                loadStoryData,
+                applyBTLStoryData,
+                collectStoryData,
+                collectBTLStoryData,
+                updateBTLAddButton,
+                generatePreview,
+            })
+        );
         // Focus trap is also called directly from body code (not just inline
         // attributes), so we destructure the names into init() scope. Strict
         // mode in ES modules means bare references don't fall through to
@@ -1226,6 +1241,9 @@ export function init(_root) {
                         <div class="story-row-actions">
                             <button onclick="moveStoryUp('${storyId}')" title="Move story up" aria-label="Move story up" tabindex="-1">▲</button>
                             <button onclick="moveStoryDown('${storyId}')" title="Move story down" aria-label="Move story down" tabindex="-1">▼</button>
+                            <select class="story-move-select" data-story-id="${storyId}" title="Move to a different EPIC or Below the Line" aria-label="Move to a different EPIC or Below the Line" tabindex="-1" onchange="moveStoryToEpic(this, '${storyId}')">
+                                <option value="">⇄</option>
+                            </select>
                             <button class="story-delete-button" onclick="removeStory('${storyId}')" title="Delete story" aria-label="Delete story" tabindex="-1">×</button>
                         </div>
                     </div>
@@ -1599,15 +1617,18 @@ export function init(_root) {
             // Remove the story element
             document.getElementById(`story-${storyId}`).remove();
 
-            // Find the epic element and update story numbers
+            // Find the epic element and update story numbers. storyCounters[epicId]
+            // is left alone (not reset to the remaining count): it's purely a
+            // monotonically-increasing source for unique story DOM-id suffixes,
+            // unrelated to the "Story N" labels (those come from DOM position via
+            // updateStoryNumbers below). Resetting it here let a later addStory
+            // reuse an id suffix a later-numbered sibling still holds - e.g.
+            // removing story 1 of 5 dropped the counter to 4, so the next add
+            // regenerated id "...-5", colliding with the untouched original story
+            // 5 and silently overwriting its fields via the duplicate id.
             const epicElement = document.getElementById(`epic-${epicId}`);
             if (epicElement) {
                 updateStoryNumbers(epicElement);
-
-                // Update the story counter to match the actual number of remaining stories
-                const remainingStories = epicElement.querySelectorAll('.story-section');
-                storyCounters[epicId] = remainingStories.length;
-                updateEpicStoryMeta(epicId);
             }
 
             // Refresh the roadmap preview
@@ -1631,6 +1652,9 @@ export function init(_root) {
                         <div class="story-row-actions">
                             <button onclick="moveBTLStoryUp('${storyId}')" title="Move story up" aria-label="Move story up" tabindex="-1">▲</button>
                             <button onclick="moveBTLStoryDown('${storyId}')" title="Move story down" aria-label="Move story down" tabindex="-1">▼</button>
+                            <select class="story-move-select" data-story-id="${storyId}" title="Move to a different EPIC" aria-label="Move to a different EPIC" tabindex="-1" onchange="moveStoryToEpic(this, '${storyId}')">
+                                <option value="">⇄</option>
+                            </select>
                             <button class="story-delete-button" onclick="deleteBTLStory('${storyId}')" title="Delete story" aria-label="Delete story" tabindex="-1">×</button>
                         </div>
                     </div>
@@ -1751,14 +1775,14 @@ export function init(_root) {
         }
 
         // BTL delete function for main form
-        window.deleteBTLStory = function (storyId) {
+        function deleteBTLStory(storyId) {
             const elementToRemove = document.getElementById(`story-${storyId}`);
             if (elementToRemove) {
                 elementToRemove.remove();
                 updateBTLAddButton();
                 generatePreview();
             }
-        };
+        }
 
         // Keeps the BTL section's story count in step with its contents. It used to
         // also cap the section at three stories (disabling the add button, and
@@ -2809,6 +2833,88 @@ export function init(_root) {
             };
         }
 
+        // Extract one BTL story's fields into the same JSON shape collectStoryData
+        // produces for regular stories - shared by collectBTLData (bulk export) and
+        // the epic-move feature (single-story extraction before re-homing it).
+        function collectBTLStoryData(storyId) {
+            const titleEl = document.getElementById(`btl-title-${storyId}`);
+            const startEl = document.getElementById(`btl-start-${storyId}`);
+            const endEl = document.getElementById(`btl-end-${storyId}`);
+            const bulletsEl = document.getElementById(`btl-bullets-${storyId}`);
+            const dateAddedEl = document.getElementById(`btl-dateadded-${storyId}`);
+            const descriptionEl = document.getElementById(`btl-description-${storyId}`);
+
+            const story = {
+                title: titleEl ? titleEl.value || '' : '',
+            };
+
+            // Handle start/end dates
+            const start = startEl ? startEl.value : '';
+            const end = endEl ? endEl.value : '';
+
+            // Determine if it's a month or date format
+            if (start) {
+                if (start.includes('-') || start.match(/^\d{1,2}[-/]\d{1,2}([-/]\d{2,4})?$/)) {
+                    story.startDate = start;
+                } else {
+                    story.startMonth = start.toUpperCase();
+                }
+            } else {
+                story.startMonth = 'JAN';
+            }
+
+            if (end) {
+                if (end.includes('-') || end.match(/^\d{1,2}[-/]\d{1,2}([-/]\d{2,4})?$/)) {
+                    story.endDate = end;
+                } else {
+                    story.endMonth = end.toUpperCase();
+                }
+            } else {
+                story.endMonth = 'MAR';
+            }
+
+            // Handle bullets
+            const bullets = bulletsEl ? bulletsEl.value : '';
+            if (bullets) {
+                story.bullets = bullets.split('\n').filter((line) => line.trim());
+            }
+
+            // Handle date added
+            const dateAdded = dateAddedEl ? dateAddedEl.value : '';
+            if (dateAdded) {
+                story.dateAdded = dateAdded;
+            }
+
+            // Handle description
+            const description = descriptionEl ? descriptionEl.value : '';
+            if (description) {
+                story.dateAddedDescription = description;
+            }
+
+            // Handle IMO
+            const imoEl = document.getElementById(`btl-imo-${storyId}`);
+            const imo = imoEl ? imoEl.value.trim() : '';
+            if (imo) {
+                story.imo = imo;
+            }
+
+            // Handle Priority
+            const priorityEl = document.getElementById(`btl-priority-${storyId}`);
+            const priority = priorityEl ? priorityEl.value : '';
+            if (priority) {
+                story.priority = priority;
+            }
+
+            // Handle Comments
+            const commentsEl = document.getElementById(`btl-comments-${storyId}`);
+            const comments = commentsEl ? commentsEl.value.trim() : '';
+            if (comments) {
+                story.comments = comments;
+            }
+
+            return story;
+        }
+
         function collectBTLData() {
             const stories = [];
 
@@ -2818,81 +2924,7 @@ export function init(_root) {
             );
             btlStoryElements.forEach((storyEl) => {
                 const storyId = storyEl.id.replace('story-', '');
-
-                const titleEl = document.getElementById(`btl-title-${storyId}`);
-                const startEl = document.getElementById(`btl-start-${storyId}`);
-                const endEl = document.getElementById(`btl-end-${storyId}`);
-                const bulletsEl = document.getElementById(`btl-bullets-${storyId}`);
-                const dateAddedEl = document.getElementById(`btl-dateadded-${storyId}`);
-                const descriptionEl = document.getElementById(`btl-description-${storyId}`);
-
-                const story = {
-                    title: titleEl ? titleEl.value || '' : '',
-                };
-
-                // Handle start/end dates
-                const start = startEl ? startEl.value : '';
-                const end = endEl ? endEl.value : '';
-
-                // Determine if it's a month or date format
-                if (start) {
-                    if (start.includes('-') || start.match(/^\d{1,2}[-/]\d{1,2}([-/]\d{2,4})?$/)) {
-                        story.startDate = start;
-                    } else {
-                        story.startMonth = start.toUpperCase();
-                    }
-                } else {
-                    story.startMonth = 'JAN';
-                }
-
-                if (end) {
-                    if (end.includes('-') || end.match(/^\d{1,2}[-/]\d{1,2}([-/]\d{2,4})?$/)) {
-                        story.endDate = end;
-                    } else {
-                        story.endMonth = end.toUpperCase();
-                    }
-                } else {
-                    story.endMonth = 'MAR';
-                }
-
-                // Handle bullets
-                const bullets = bulletsEl ? bulletsEl.value : '';
-                if (bullets) {
-                    story.bullets = bullets.split('\n').filter((line) => line.trim());
-                }
-
-                // Handle date added
-                const dateAdded = dateAddedEl ? dateAddedEl.value : '';
-                if (dateAdded) {
-                    story.dateAdded = dateAdded;
-                }
-
-                // Handle description
-                const description = descriptionEl ? descriptionEl.value : '';
-                if (description) {
-                    story.dateAddedDescription = description;
-                }
-
-                // Handle IMO
-                const imoEl = document.getElementById(`btl-imo-${storyId}`);
-                const imo = imoEl ? imoEl.value.trim() : '';
-                if (imo) {
-                    story.imo = imo;
-                }
-
-                // Handle Priority
-                const priorityEl = document.getElementById(`btl-priority-${storyId}`);
-                const priority = priorityEl ? priorityEl.value : '';
-                if (priority) {
-                    story.priority = priority;
-                }
-
-                // Handle Comments
-                const commentsEl = document.getElementById(`btl-comments-${storyId}`);
-                const comments = commentsEl ? commentsEl.value.trim() : '';
-                if (comments) {
-                    story.comments = comments;
-                }
+                const story = collectBTLStoryData(storyId);
 
                 if (story.title) {
                     // Only add stories with titles
@@ -3636,6 +3668,73 @@ export function init(_root) {
             }
         }
 
+        // Populate one BTL story shell (as created by addBTLStory) from the JSON
+        // shape collectBTLStoryData/collectStoryData produce - shared by loadBTLData
+        // (bulk import) and the epic-move feature (single-story re-homing).
+        function applyBTLStoryData(storyId, story) {
+            const titleEl = document.getElementById(`btl-title-${storyId}`);
+            const startEl = document.getElementById(`btl-start-${storyId}`);
+            const endEl = document.getElementById(`btl-end-${storyId}`);
+            const bulletsEl = document.getElementById(`btl-bullets-${storyId}`);
+            const dateAddedEl = document.getElementById(`btl-dateadded-${storyId}`);
+            const descriptionEl = document.getElementById(`btl-description-${storyId}`);
+
+            if (titleEl) {
+                titleEl.value = story.title || '';
+                // Update the BTL story header to show title when collapsed
+                updateStoryHeaderTitle(storyId, true);
+            }
+
+            if (startEl) {
+                if (story.startDate) {
+                    startEl.value = story.startDate;
+                } else if (story.startMonth) {
+                    startEl.value = DateUtility.convertMonthToStartDate(story.startMonth);
+                }
+            }
+
+            if (endEl) {
+                if (story.endDate) {
+                    endEl.value = story.endDate;
+                } else if (story.endMonth) {
+                    endEl.value = DateUtility.convertMonthToEndDate(story.endMonth);
+                }
+                // Clear any previous error styling when loading data
+                endEl.style.borderColor = '';
+                endEl.style.backgroundColor = '';
+            }
+
+            if (bulletsEl && story.bullets && Array.isArray(story.bullets)) {
+                bulletsEl.value = story.bullets.join('\n');
+            }
+
+            if (dateAddedEl) {
+                dateAddedEl.value = story.dateAdded || '';
+            }
+
+            if (descriptionEl) {
+                descriptionEl.value = story.dateAddedDescription || '';
+            }
+
+            // Set IMO field
+            const imoEl = document.getElementById(`btl-imo-${storyId}`);
+            if (imoEl) {
+                imoEl.value = story.imo || '';
+            }
+
+            // Set Priority field
+            const priorityEl = document.getElementById(`btl-priority-${storyId}`);
+            if (priorityEl) {
+                priorityEl.value = story.priority || '';
+            }
+
+            // Set Comments field
+            const commentsEl = document.getElementById(`btl-comments-${storyId}`);
+            if (commentsEl) {
+                commentsEl.value = story.comments || '';
+            }
+        }
+
         function loadBTLData(btlData) {
             try {
                 // Clear existing BTL stories
@@ -3647,79 +3746,7 @@ export function init(_root) {
                     btlData.stories.forEach((story) => {
                         addBTLStory();
                         const currentStoryId = `btl-${btlStoryCounter}`;
-
-                        // Set story data
-                        const titleEl = document.getElementById(`btl-title-${currentStoryId}`);
-                        const startEl = document.getElementById(`btl-start-${currentStoryId}`);
-                        const endEl = document.getElementById(`btl-end-${currentStoryId}`);
-                        const bulletsEl = document.getElementById(`btl-bullets-${currentStoryId}`);
-                        const dateAddedEl = document.getElementById(
-                            `btl-dateadded-${currentStoryId}`
-                        );
-                        const descriptionEl = document.getElementById(
-                            `btl-description-${currentStoryId}`
-                        );
-
-                        if (titleEl) {
-                            titleEl.value = story.title || '';
-                            // Update the BTL story header to show title when collapsed
-                            updateStoryHeaderTitle(currentStoryId, true);
-                        }
-
-                        if (startEl) {
-                            if (story.startDate) {
-                                startEl.value = story.startDate;
-                            } else if (story.startMonth) {
-                                startEl.value = DateUtility.convertMonthToStartDate(
-                                    story.startMonth
-                                );
-                            }
-                        }
-
-                        if (endEl) {
-                            if (story.endDate) {
-                                endEl.value = story.endDate;
-                            } else if (story.endMonth) {
-                                endEl.value = DateUtility.convertMonthToEndDate(story.endMonth);
-                            }
-                            // Clear any previous error styling when loading data
-                            endEl.style.borderColor = '';
-                            endEl.style.backgroundColor = '';
-                        }
-
-                        if (bulletsEl && story.bullets && Array.isArray(story.bullets)) {
-                            bulletsEl.value = story.bullets.join('\n');
-                        }
-
-                        if (dateAddedEl) {
-                            dateAddedEl.value = story.dateAdded || '';
-                        }
-
-                        if (descriptionEl) {
-                            descriptionEl.value = story.dateAddedDescription || '';
-                        }
-
-                        // Set IMO field
-                        const imoEl = document.getElementById(`btl-imo-${currentStoryId}`);
-                        if (imoEl) {
-                            imoEl.value = story.imo || '';
-                        }
-
-                        // Set Priority field
-                        const priorityEl = document.getElementById(
-                            `btl-priority-${currentStoryId}`
-                        );
-                        if (priorityEl) {
-                            priorityEl.value = story.priority || '';
-                        }
-
-                        // Set Comments field
-                        const commentsEl = document.getElementById(
-                            `btl-comments-${currentStoryId}`
-                        );
-                        if (commentsEl) {
-                            commentsEl.value = story.comments || '';
-                        }
+                        applyBTLStoryData(currentStoryId, story);
                     });
                 }
 
@@ -6235,6 +6262,7 @@ export function init(_root) {
         if (typeof addStory === 'function') window.addStory = addStory;
         if (typeof removeStory === 'function') window.removeStory = removeStory;
         if (typeof addBTLStory === 'function') window.addBTLStory = addBTLStory;
+        if (typeof deleteBTLStory === 'function') window.deleteBTLStory = deleteBTLStory;
         if (typeof updateBTLAddButton === 'function')
             window.updateBTLAddButton = updateBTLAddButton;
         if (typeof getTodaysDateEuropean === 'function')
