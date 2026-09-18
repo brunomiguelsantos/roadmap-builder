@@ -400,7 +400,7 @@ body {
 
 /* KTLO Zoom States */
 /* z-index 200 keeps the hovered story (and its milestone popover/track) above
-   the KTLO monthly boxes, whose highest z-index is 155 (January hover). */
+   the KTLO monthly boxes, whose highest z-index is 100 (the hovered box). */
 .ktlo-story.story-zoom-large:hover {
     transform: translateX(-4px) scale(1.2);
     z-index: 200;
@@ -1184,39 +1184,34 @@ html[data-status-style='side']
     transform: scaleX(-1.15) scaleY(1.15);
 }
 
+/* A hovered box scales to 1.3 and has to overlap its neighbours. The lift must
+   sit on .monthly-box, not on .monthly-box-content: every box carries an inline
+   translateX(), which makes it a stacking context, so a z-index on the content
+   can never escape its own box. Scoped to :has(...:hover) so the boxes stay at
+   z-index auto at rest - no ancestor up to the root is a stacking context, so a
+   permanent z-index here escapes the swimlane and paints that month over the
+   rest of the roadmap. */
+.monthly-box:has(.monthly-box-content:hover) {
+    z-index: 100;
+}
+
 /* Monthly box hover effects - using higher specificity instead of !important */
 .roadmap-container
     .monthly-boxes-container
     .monthly-box:not(.monthly-box-december)
     .monthly-box-content:hover {
     transform: scale(1.3);
-    z-index: 100;
     box-shadow: var(--rm-hover-shadow);
 }
 
-/* Specific hover rule for December only - CRITICAL: !important needed for proper visibility */
+/* Specific hover rule for December only */
 .monthly-box-december .monthly-box-content:hover {
-    transform: translateX(1px) scale(1.3) !important;
-    z-index: 150 !important;
+    transform: translateX(1px) scale(1.3);
     box-shadow: var(--rm-hover-shadow);
-    position: relative;
-}
-
-/* Ensure December has high z-index in normal state too - CRITICAL: !important needed */
-.monthly-box-december {
-    z-index: 120 !important;
-    position: relative;
-}
-
-.monthly-box-december .monthly-box-content {
-    z-index: 130;
-    position: relative;
 }
 
 /* Monthly box hover effects - using higher specificity to avoid !important */
 .roadmap-container .monthly-boxes-container .monthly-box .monthly-box-content:hover {
-    z-index: 120;
-    position: relative;
     box-shadow: var(--rm-hover-shadow);
     transform: scale(1.3);
 }
@@ -1317,22 +1312,6 @@ em {
 body .roadmap-container input[data-date-picker-initialized] {
     background-image: none;
     padding-right: 8px;
-}
-
-/* January specific z-index fix - CRITICAL: !important needed for iframe isolation */
-.monthly-box:first-child {
-    z-index: 110 !important;
-    position: relative;
-}
-
-.monthly-box:first-child .monthly-box-content {
-    z-index: 111 !important;
-    position: relative;
-}
-
-.monthly-box:first-child .monthly-box-content:hover {
-    z-index: 155 !important;
-    position: relative;
 }
 
 /* ============================================================
