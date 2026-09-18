@@ -1,7 +1,5 @@
 
 
-
-
     <div class="builder-container">
         <!-- File Browser Panel -->
         <div class="file-browser-panel collapsed" id="fileBrowserPanel">
@@ -231,17 +229,7 @@
                     <svg class="fullscreen-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
                 </button>
                 <div id="roadmap-mount" class="roadmap-root"></div>
-            </div>
-        </div>
-    </div>
-    <!-- Fullscreen Overlay -->
-    <div class="fullscreen-overlay" id="fullscreen-overlay" onclick="hideFullscreen()">
-        <div class="fullscreen-content" onclick="event.stopPropagation()">
-            <button class="fullscreen-close" onclick="hideFullscreen()">✕ Close</button>
-            <iframe id="fullscreen-preview" src="about:blank"></iframe>
-        </div>
-    </div>
-    <!-- Edit Story Modal -->
+                <!-- Edit Story Modal -->
     <div id="editStoryModal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
@@ -520,31 +508,7 @@
             </div>
         </div>
     </div>
-
-    <!-- New Roadmap Modal -->
-    <div id="newRoadmapModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>New Roadmap</h2>
-                <button class="close" onclick="closeNewRoadmapModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 20px;">Select the year for your new roadmap. All current data will be cleared.</p>
-                <div class="form-group">
-                    <label for="newRoadmapYear">Roadmap Year:</label>
-                    <input type="number" id="newRoadmapYear" value="2025" min="2020" max="2030" style="width: 100px;" onkeydown="if(event.key === 'Enter') confirmNewRoadmap();">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <div class="flex-modal-footer">
-                    <button type="button" onclick="closeNewRoadmapModal()" class="secondary">Cancel</button>
-                    <button type="button" onclick="confirmNewRoadmap()" class="btn-modal">Create New Roadmap</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Monthly KTLO Edit Modal -->
+                <!-- Monthly KTLO Edit Modal -->
     <div id="editMonthlyKTLOModal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
@@ -594,3 +558,39 @@
             </div>
         </div>
     </div>
+            </div>
+        </div>
+    </div>
+    <!-- Fullscreen Overlay -->
+    <div class="fullscreen-overlay" id="fullscreen-overlay" onclick="hideFullscreen()">
+        <div class="fullscreen-content" onclick="event.stopPropagation()">
+            <button class="fullscreen-close" onclick="hideFullscreen()">✕ Close</button>
+            <iframe id="fullscreen-preview" src="about:blank"></iframe>
+        </div>
+    </div>
+    
+
+    <!-- New Roadmap Modal -->
+    <div id="newRoadmapModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Roadmap</h2>
+                <button class="close" onclick="closeNewRoadmapModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px;">Select the year for your new roadmap. All current data will be cleared.</p>
+                <div class="form-group">
+                    <label for="newRoadmapYear">Roadmap Year:</label>
+                    <input type="number" id="newRoadmapYear" value="2025" min="2020" max="2030" style="width: 100px;" onkeydown="if(event.key === 'Enter') confirmNewRoadmap();">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="flex-modal-footer">
+                    <button type="button" onclick="closeNewRoadmapModal()" class="secondary">Cancel</button>
+                    <button type="button" onclick="confirmNewRoadmap()" class="btn-modal">Create New Roadmap</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
