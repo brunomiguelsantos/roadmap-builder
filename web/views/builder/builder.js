@@ -473,6 +473,21 @@ export function init(_root) {
 
         // Use DOMContentLoaded instead of window.onload for more reliable initialization
         document.addEventListener('DOMContentLoaded', function () {
+            // Restore the saved layout toggles before anything renders the
+            // preview, since the generator reads them off the checkboxes.
+            const epicTitleTopToggle = /** @type {HTMLInputElement | null} */ (
+                document.getElementById('epic-title-top-toggle')
+            );
+            if (epicTitleTopToggle) {
+                epicTitleTopToggle.checked = ConfigUtility.shouldShowEpicTitleTop();
+            }
+            const hideStoryTextToggle = /** @type {HTMLInputElement | null} */ (
+                document.getElementById('hide-story-text-toggle')
+            );
+            if (hideStoryTextToggle) {
+                hideStoryTextToggle.checked = ConfigUtility.shouldHideStoryText();
+            }
+
             // Populate the country-flags fieldset in the edit modal once.
             // Global is checked by default so opening the modal without a
             // loaded story still matches the existing "empty = Global" rule.
@@ -1035,6 +1050,27 @@ export function init(_root) {
                 handleForceTextBelowToggle();
             }
         });
+
+        // Layout toggles below "force text below". Unlike that one they are
+        // display preferences, so they persist and survive loading a file.
+        // roadmap-generator.js reads the checkboxes directly.
+        function handleEpicTitleTopToggle() {
+            const toggle = /** @type {HTMLInputElement | null} */ (
+                document.getElementById('epic-title-top-toggle')
+            );
+            if (!toggle) return;
+            ConfigUtility.setEpicTitleTop(toggle.checked);
+            generatePreview();
+        }
+
+        function handleHideStoryTextToggle() {
+            const toggle = /** @type {HTMLInputElement | null} */ (
+                document.getElementById('hide-story-text-toggle')
+            );
+            if (!toggle) return;
+            ConfigUtility.setHideStoryText(toggle.checked);
+            generatePreview();
+        }
 
         // The story whose FTE was edited last, so the next render can pop just
         // that one tag. The whole roadmap is rebuilt on every keystroke, so a
@@ -6362,6 +6398,8 @@ export function init(_root) {
             window.debouncedGeneratePreview = debouncedGeneratePreview;
         if (typeof handleForceTextBelowToggle === 'function')
             window.handleForceTextBelowToggle = handleForceTextBelowToggle;
+        window.handleEpicTitleTopToggle = handleEpicTitleTopToggle;
+        window.handleHideStoryTextToggle = handleHideStoryTextToggle;
         if (typeof addAutoUpdateListeners === 'function')
             window.addAutoUpdateListeners = addAutoUpdateListeners;
         if (typeof addListenersToExistingElements === 'function')

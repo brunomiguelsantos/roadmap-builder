@@ -33,6 +33,7 @@
        --rm-status-* colour. Flips with the scheme because the dark palette
        uses light fills. */
     --rm-status-ink: #ffffff;
+    --rm-today-line: #e11d48;
     --rm-priority-high: #b91c1c;
     --rm-priority-medium: #b45309;
     --rm-priority-low: #0369a1;
@@ -86,6 +87,7 @@
     --rm-status-transfer: #a3b0c2;
     --rm-status-proposed: #7dd3fc;
     --rm-status-ink: #0f172a;
+    --rm-today-line: #fb7185;
     --rm-priority-high: #fca5a5;
     --rm-priority-medium: #fbbf24;
     --rm-priority-low: #7dd3fc;
@@ -237,6 +239,32 @@ body {
 .swimlanes-container {
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+/* Today marker. Spans every swimlane below the sticky header; z-index 0 keeps
+   it over the lane backgrounds and grid lines but under the story bars. */
+.today-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background-color: var(--rm-today-line);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.today-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--rm-today-line);
+    transform: translate(-50%, -50%);
 }
 
 .swimlane {
@@ -339,6 +367,53 @@ body {
 .swimlanes-container > .swimlane:last-child .swimlane-content {
     border-radius: 0 0 10px 10px;
     overflow: hidden;
+}
+
+/* Epic title on top: the name becomes a header strip across the top of the
+   swimlane instead of a rotated label in the left margin. The strip is a
+   shade darker than the band and ruled off from the grid below, so it reads
+   as the epic's heading rather than a gap in the month lines. */
+.roadmap-epic-title-top .swimlane {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.roadmap-epic-title-top .swimlane-even {
+    background-color: var(--rm-swimlane-even);
+}
+
+.roadmap-epic-title-top .swimlane-odd {
+    background-color: var(--rm-swimlane-odd);
+}
+
+.roadmap-epic-title-top .epic-label {
+    position: relative;
+    left: auto;
+    top: auto;
+    bottom: auto;
+    width: auto;
+    transform: none;
+    justify-content: flex-start;
+    padding: 6px 12px;
+    background-color: color-mix(in srgb, var(--rm-text-strong) 7%, transparent);
+    border-bottom: 1px solid var(--rm-border);
+    color: var(--rm-text-strong);
+    font-size: 13px;
+    white-space: normal;
+    text-align: left;
+}
+
+.roadmap-epic-title-top .btl-swimlane .epic-label {
+    color: var(--rm-text-muted);
+    font-size: 12px;
+}
+
+.roadmap-epic-title-top .timeline-grid + .story-track {
+    margin-top: 14px;
+}
+
+.roadmap-epic-title-top .swimlanes-container > .swimlane:last-child {
+    border-radius: 0 0 10px 10px;
 }
 
 /* Story Track */
@@ -534,6 +609,72 @@ html[data-status-style='side']
     .story-track:has(.story-item:hover, .story-item.story-hover, .roadmap-text:hover)
     .roadmap-text {
     opacity: 1;
+}
+
+/* Hidden story text: only the title shows. The bar sizes to its title
+   instead of stretching to the row, and the bullets sit in an overlay
+   anchored to its bottom edge. Closed, the overlay has no height, so the
+   bottom badges it carries sit exactly where they would on the bar. Open
+   (on hover, after the same delay as the zoom), it continues the bar's own
+   border and background below the title, so the box looks as it does with
+   text shown but the rows underneath don't move.
+   The body stays overflow: hidden throughout and only its max-height opens:
+   overflow is discrete, so it would flip at once and let the bullets (which
+   carry inline visibility: visible) spill out before the delayed border. */
+.roadmap-hide-story-text .story-item {
+    align-self: start;
+}
+
+.roadmap-hide-story-text .story-details {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: 0;
+    background: inherit;
+    border-width: 0;
+    border-style: inherit;
+    border-color: inherit;
+    border-radius: 0 0 6px 6px;
+}
+
+.roadmap-hide-story-text .story-details-body {
+    max-height: 0;
+    overflow: hidden;
+}
+
+.roadmap-hide-story-text .story-item:hover .story-details,
+.roadmap-hide-story-text .story-item.story-hover .story-details {
+    top: calc(100% - 7px);
+    left: -1.5px;
+    right: -1.5px;
+    padding: 0 10px 7px 9px;
+    border-width: 0 1.5px 1.5px;
+    transition: all 0s linear 0.4s;
+}
+
+.roadmap-hide-story-text .story-item:hover .story-details-body,
+.roadmap-hide-story-text .story-item.story-hover .story-details-body {
+    max-height: 100vh;
+    transition: max-height 0s linear 0.4s;
+}
+
+.roadmap-hide-story-text .story-item:has(.story-details):hover,
+.roadmap-hide-story-text .story-item.story-hover:has(.story-details) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    transition:
+        transform 0.2s ease 0.4s,
+        border-radius 0s linear 0.4s;
+}
+
+/* The last swimlane clips its content to round the container's corners;
+   let an open overlay spill past it. */
+.roadmap-hide-story-text
+    .swimlanes-container
+    > .swimlane:last-child
+    .swimlane-content:has(.story-item:hover, .story-item.story-hover) {
+    overflow: visible;
 }
 
 /* Cancelled Stories */
